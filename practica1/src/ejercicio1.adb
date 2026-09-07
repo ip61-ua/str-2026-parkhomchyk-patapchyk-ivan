@@ -15,7 +15,7 @@ end ejercicio1;
 -- Desventaja: Mayor colisión de nombres.
 -- Por lo que muchas veces te quedas con la sintaxis más verbosa para no
 --  incurrir en el problema. Esto es un downgrade respecto a lenguajes modernos
---  con módulos, donde el conflicto se resuelve adhoc.
+--  con módulos, donde el conflicto se resuelve adh	oc.
 
 
 -- 2.b) Falla porque un archivo fuente de Ada excede en el número de unidades de

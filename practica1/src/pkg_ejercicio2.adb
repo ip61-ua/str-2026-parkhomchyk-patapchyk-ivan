@@ -5,4 +5,13 @@ package body pkg_ejercicio2 is
    begin
       Put_Line("Vamos a iniciarnos en el lenguaje Ada");
    end otroMensaje;
+
+   function obtenerNota return Float is
+   begin
+      return notaMedia;
+   end obtenerNota;
+
+begin
+   numAlumnos := 12;
+   notaMedia := 5.62;
 end pkg_ejercicio2;
