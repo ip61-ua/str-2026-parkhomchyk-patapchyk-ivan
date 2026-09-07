@@ -10,8 +10,4 @@ package body pkg_ejercicio2 is
    begin
       return notaMedia;
    end obtenerNota;
-
-begin
-   numAlumnos := 12;
-   notaMedia := 5.62;
 end pkg_ejercicio2;
