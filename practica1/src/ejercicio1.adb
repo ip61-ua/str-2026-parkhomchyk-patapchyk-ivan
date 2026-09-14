@@ -1,18 +1,20 @@
 with Ada.Text_IO; use Ada.Text_IO;
 with Ada.Integer_Text_IO;
 with pkg_ejercicio2;
+with Ada.exceptions;
 
 procedure ejercicio1 is
-   -- el error de compilación es que faltaba poner :
-   s : String := "Comenzamos las prácticas de STR";
-   mes : Natural;
-begin
-   Put("Hola Mundo!!! ");
-   Put_Line(s);
-   pkg_ejercicio2.otroMensaje;
-   Ada.Integer_Text_IO.Get(Item => mes);
+   procedure ejercicio1_internal is
+      -- el error de compilación es que faltaba poner :
+      s : String := "Comenzamos las prácticas de STR";
+      mes : Natural;
+   begin
+      Put("Hola Mundo!!! ");
+      Put_Line(s);
+      pkg_ejercicio2.otroMensaje;
+      Ada.Integer_Text_IO.Get(Item => mes);
 	
-   case mes is
+      case mes is
       when 1  => Put_Line("invierno");
       when 2  => Put_Line("invierno");
       when 12 => Put_Line("invierno");
@@ -25,10 +27,17 @@ begin
       when 9  => Put_Line("otoño");
       when 10 => Put_Line("otoño");
       when 11 => Put_Line("otoño");
-      when others =>   Put_Line("Mes incorrecto");
-   end case;
-
-
+      when others => Put_Line("Mes incorrecto");
+      end case;
+     
+   exception
+      when others => Ada.Text_Io.Put_Line("El número de mes debe ser > 0");
+   end ejercicio1_internal;
+      
+begin
+   ejercicio1_internal;
+   ada.text_io.put_line("FIN DEL PROGRAMA");
+   
 end ejercicio1;
 
 -- 1.d) use tiene los mismos problemas que el usar el using de c++.
