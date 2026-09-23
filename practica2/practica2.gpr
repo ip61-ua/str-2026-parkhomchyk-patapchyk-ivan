@@ -1,0 +1,12 @@
+with "gtkada";
+
+project Practica2 is
+   for Source_Dirs use ("src");
+   for Object_Dir use "obj";
+   for Main use ("main.adb") & project'Main;
+
+   package Linker is
+      for Default_Switches ("ada") use ("-lcairo", "-lgtk-3", "-lgdk-3", "-lgobject-2.0", "-lglib-2.0");
+   end Linker;
+end Practica2;
+
