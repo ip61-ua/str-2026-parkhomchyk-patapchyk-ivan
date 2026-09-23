@@ -1,3 +1,5 @@
+with Ada.Integer_Text_IO;  USE Ada.Integer_Text_IO;
+with Ada.Text_Io;          use Ada.Text_Io;
 with pkg_graficos;
 with pkg_tipos;            use pkg_tipos;
 with Ada.Numerics.Discrete_Random;
@@ -30,6 +32,11 @@ begin
          tarea_avion := new T_Tarea_Avion (ptr_avion);
 
          Retardo := Pkg_Custom_Aleatorio.Random (Generador);
+         Ada.Text_Io.Put ("Esperando ");
+         Put (Item => Retardo, Width => 0);
+         Ada.Text_Io.Put (" segundos...");
+         New_Line;
+
          delay (Duration (Retardo));
       end loop;
    end loop;
