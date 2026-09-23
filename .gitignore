@@ -3,3 +3,15 @@
 
 # Ada Library Information
 *.ali
+
+obj/
+obj/*
+
+
+b__*.adb
+b__*.ads
+*.adb.stderr
+*.adb.stdout
+*.bexch
+*.adb.stderr
+*.adb.stdout
