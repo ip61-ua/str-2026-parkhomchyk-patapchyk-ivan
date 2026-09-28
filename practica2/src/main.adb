@@ -22,7 +22,7 @@ procedure main is
 begin
    Pkg_Custom_Aleatorio.Reset (Generador);
    for id in T_IdAvion loop
-      for aerovia in T_Rango_AereoVia'First .. 4 loop
+      for aerovia in T_Rango_AeroVia'First .. 4 loop
          -- T_Rango_AereoVia'Last loop
 
          -- inicializar datos de un nuevo avion
@@ -37,10 +37,10 @@ begin
          Ptr_Avion.Pos := Pos_Inicio (aerovia);
          ptr_avion.velocidad.y := 0;
          ptr_avion.tren_aterrizaje := False;
-         ptr_avion.aereovia := aerovia;
-         ptr_avion.aereovia_inicial := aerovia;
+         ptr_avion.aerovia := aerovia;
+         ptr_avion.aerovia_inicial := aerovia;
          ptr_avion.color := blue;
-         ptr_avion.pista := SIN_PISTA;
+         ptr_avion.pista := 0;
 
          -- Crear una tarea para el comportamiento del avion
          tarea_avion := new T_Tarea_Avion (ptr_avion);

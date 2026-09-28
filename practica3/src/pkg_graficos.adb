@@ -2,23 +2,21 @@
 -- Este paquete se encarga de implementar la interfaz gráfica
 --*************************************************************************
 
-with Double_Buffer;     use Double_Buffer;
-with Gdk.Color;         use Gdk.Color;
+with PKG_debug;
+with Gdk.Cairo;
 with Gtk.Enums;         use Gtk.Enums;
 with Gtk.Box;           use Gtk.Box;
 with Gtk.Button;        use Gtk.Button;
-with Gtk.Widget;        use Gtk.Widget;
 with Ada.Float_Text_IO;
-with pango.layout; use pango.layout;
-with Pango.Font;
-with PKG_debug;
 with Ada.exceptions; use Ada.exceptions;
-with Gdk.Pixbuf;
-with Gdk.Window; use Gdk.Window;
-with Gdk; use Gdk;
-with Gtk.Grid;
 with Gtk.Alignment;
 with GNAT.OS_Lib;
+with Gdk.Pixbuf;       use Gdk.Pixbuf;
+with Gtk.Handlers;     use Gtk.Handlers;
+pragma Elaborate_All (Gtk.Handlers);
+with PKG_Torre_Control; use PKG_Torre_Control;
+
+
 
 package body PKG_graficos is
 
@@ -36,45 +34,54 @@ package body PKG_graficos is
    -- Procedure que se encarga de inicializar la interfaz gráfica
    ------------------------------------------------------------------------
    procedure Inicializar_Interfaz_Grafica is
-      Win        : Gtk_Window;
-      Buffer     : Gtk_Double_Buffer;
-      Vbox, Hbox : Gtk_Box;
-      Id         : G_Source_Id;
-      Button     : Gtk_Button;
+
+      Win          : Gtk_Window;
+      area_dibujo  : T_Area_Dibujo;
+      Vbox, Hbox   : Gtk_Box;
+      Id           : G_Source_Id;
+      Button_exit          : Gtk_Button;
+      Button_torre_control : Gtk_Button;
       inbuilt_font : Pango.Font.Pango_Font_Description;
-      TAM_BUTTON_EXIT : constant GLib.Gint := 20;
-      alinea_button : Gtk.Alignment.Gtk_Alignment;
+      alinea_button_exit          : Gtk.Alignment.Gtk_Alignment;
+      alinea_button_torre_control : Gtk.Alignment.Gtk_Alignment;
    begin
       -- ventana principal
       Gtk.Window.Gtk_New (Win, Window_Toplevel);
       Set_Title (Win, "PRACTICA STR: CONTROL DE TRAFICO AEREO");
-      Win.Set_Default_Size(CANVAS_WIDTH, CANVAS_HEIGHT);--+TAM_BUTTON_EXIT);
+      Win.Set_Default_Size(CANVAS_WIDTH, CANVAS_HEIGHT);
       Void_Cb.Connect (Win, "destroy", Void_Cb.To_Marshaller (Quit'Access));
 
 
       -- botón Exit
-      Gtk_New (Button, "EXIT");
-      Destroyed.Object_Connect (Button,
+      Gtk_New (Button_exit, "EXIT");
+      Destroyed.Object_Connect (Button_exit,
                                 "clicked",
                                 Destroyed.To_Marshaller (Quit'Access),
                                 Slot_Object => Win);
 
-      Button.Set_Size_Request(100, TAM_BUTTON_EXIT);
-      Gtk.Alignment.Gtk_New(alinea_button, 0.5, 0.5, 0.0, 0.0);
-      alinea_button.Add(Button);
+      Gtk.Alignment.Gtk_New(alinea_button_exit, 0.5, 0.5, 0.0, 0.0);
+      alinea_button_exit.Add(Button_exit);
 
 
-      --  Double buffer
-      Double_Buffer.Gtk_New(Buffer);
-      Buffer.Set_Size_Request(CANVAS_WIDTH, CANVAS_HEIGHT);
+       -- botón Torre de control
+      Gtk_New (Button_torre_control, "TORRE DE CONTROL");
+      Gtk.Alignment.Gtk_New(alinea_button_torre_control, 0.0, 0.0, 0.0, 0.0);
+      alinea_button_torre_control.Add(Button_torre_control);
+      Button_torre_control.On_Clicked(Iniciar_Torre_Control'Access);
+
+
+
+      Crear_Area_Dibujo(area_dibujo);
+      area_dibujo.Set_Size_Request(CANVAS_WIDTH, CANVAS_HEIGHT);
 
 
       -- Asociar widgets a la ventana principal y mostrarla
       Gtk_New_Hbox (Hbox, Homogeneous =>  True, Spacing => 10);
       Gtk_New_Vbox (Vbox, Homogeneous => False, Spacing => 0);
 
-      Pack_Start (Vbox, Buffer);
-      Pack_Start (Vbox, alinea_button);--, Expand => False, Fill => False);
+      Pack_Start (Vbox, area_dibujo);
+      Pack_Start (Vbox, alinea_button_exit);--, Expand => False, Fill => False);
+      Pack_Start (Vbox, alinea_button_torre_control);--,Expand => False, Fill => False);
 
       Pack_Start (Hbox, Vbox);
 
@@ -84,12 +91,12 @@ package body PKG_graficos is
       Show_All (Win);
 
       Id := Main_Context_Sources.Timeout_Add (PERIODICIDAD_REDIBUJAR_MILISEGUNDOS,
-                                              Draw_Complex_Buffer'Access,
-                                              Gtk_Drawing_Area (Buffer));
+                                              Draw_Area_Dibujo'Access,
+                                              Gtk_Drawing_Area(area_dibujo));
 
 
-      Gdk_New(pangoLayout, Get_Pango_Context(Buffer));
-      inbuilt_font := Pango.Font.From_String("Courier");
+      Gdk_New(pangoLayout, Get_Pango_Context(area_dibujo));
+      inbuilt_font := Pango.Font.From_String("Arial 18");
       Pango.Layout.Set_Font_Description(pangoLayout, inbuilt_font);
 
 
@@ -99,37 +106,80 @@ package body PKG_graficos is
    end Inicializar_Interfaz_Grafica;
 
 
-   ------------------
-   -- Draw_Complex --
-   ------------------
-   procedure Draw_Complex (Pixmap : Cairo_Context) is
+   procedure Iniciar_Torre_Control(button : access Gtk_Button_Record'Class) is
    begin
+      PKG_debug.Escribir("INICIAR TORRE DE CONTROL");
+      PKG_Torre_Control.Tarea_Torre_Control.Iniciar_Torre_Control;
+      button.Destroy;
+   end Iniciar_Torre_Control;
 
-      Draw_Rectangle (Pixmap, Gris_Fondo_Gc, Filled => True,
+
+
+   -------------------------------------------------------------
+   -- DIBUJAR EN EL CANVAS EL ESTADO ACTUAL DE TODOS LOS OBJETOS
+   -------------------------------------------------------------
+   Procedure Draw_Objetos_Graficos (cr : Cairo_Context) is
+   begin
+      Draw_Rectangle (cr, Gris_Fondo_Gc, Filled => True,
                       X     => 0,   Y      => 0,
                       Width => CANVAS_WIDTH, Height => CANVAS_HEIGHT);
+      Dibujar_Canvas(cr);
+
+   end Draw_Objetos_Graficos;
 
 
-      -- DIBUJAR EN EL CANVAS EL ESTADO ACTUAL DE TODOS LOS OBJETOS
-      Dibujar_Canvas(Pixmap);
-
-   end Draw_Complex;
 
 
-   -------------------------
-   -- Draw_Complex_Buffer --
-   -------------------------
-   function Draw_Complex_Buffer (Area : Gtk_Drawing_Area) return Boolean is
-      Buffer : Gtk_Double_Buffer := Gtk_Double_Buffer (Area);
+   -----------------------------------------
+   -- Dibujar en area de dibujo usando Cairo
+   -----------------------------------------
+   function Draw_Area_Dibujo (area_dibujo : Gtk_Drawing_Area) return Boolean is
+      cr : Cairo_Context;
+
+      --x, y: Glib.Gint;
+      ventana_dibujo : Gdk.Gdk_Window;
+      --cursor : Gdk.Gdk_Cursor;
+      --display : Gdk.Display.Gdk_Display;
 
    begin
-      Draw_Complex (Get_Pixmap (Buffer));
 
-      -- Creo que no es necesario invocar a este procedure
-     -- Double_Buffer.Thaw(Buffer);
+      -- Forzar la invocaciÛn de la funciÛn Expose (Dibujar_CairoContex) asociada al evento draw
+      --Gtk_Drawing_Area(buffer).draw(cr);
+
+
+      ventana_dibujo := Get_Window(area_dibujo);
+      cr := Gdk.Cairo.Create(ventana_dibujo);
+      Draw_Objetos_Graficos(cr);
+
+
+      --ventana_principal := area_dibujo.Get_Parent_Window;
+      --ventana_principal := gtk.Widget.Get_Parent_Window(area_dibujo);   Así falla con el tipo del parámetro
+
+      --cursor := Gdk.Window.Get_Cursor(ventana_principal);
+      --display := Gdk.Display.Get_Default;
+
+      -- al usar button.Grab_Focus, se refresca correctamente, hasta que hacemos algún click en la ventana
+      --button.Grab_Focus;
+
+      -- ESTA LÍNEA ES NECESARIA EN LA VERSIÓN DEL MAC-OSX M2, y es para que se refesque la pantalla
+      -- Si no se pone esta línea, el código sólo se refresca cuando se entra y sale del botón exit
+      -- En linux no es necesaria
+      Queue_Draw_Area(area_dibujo, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+
+
+      --area_dibujo.Get_Pointer(x,y);
+      --Gtk.Widget.Get_Pointer(area_dibujo,x,y);  Así falla con el tipo del parámetro
+      --PKG_debug.Escribir("posicion cursor: " & Gint'Image(x) & " - " & Gint'Image(y));
+      --PKG_debug.Escribir("EXit: " & Integer'Image(X_BUTTON_EXIT) & " - " & Integer'Image(Y_BUTTON_EXIT));
+
+
+
+      Cairo.Destroy(cr);
 
       return True;
-   end Draw_Complex_Buffer;
+
+   end Draw_Area_Dibujo;
 
 
 
@@ -151,15 +201,15 @@ package body PKG_graficos is
    procedure Inicializar_Buffer_Aviones is
       avion : T_RecordAvion;
    BEGIN
-      for aereovia IN T_Rango_AereoVia loop
+      for aerovia IN T_Rango_AeroVia loop
          FOR i IN T_RangoBufferAviones LOOP
             avion.id := 0;
             avion.pos.x := 0;
-            avion.pos.y := y_aereovia(aereovia);
+            avion.pos.y := y_aerovia(aerovia);
             avion.velocidad := (0, 0);
             avion.color:= T_ColorAvion'First;
-            avion.aereovia := aereovia;
-            Pkg_Buffer_aviones.Actualiza_Item(i, avion, buffer_aviones(aereovia));
+            avion.aerovia := aerovia;
+            Pkg_Buffer_aviones.Actualiza_Item(i, avion, buffer_aviones(aerovia));
          END LOOP;
       END LOOP;
 
@@ -173,7 +223,7 @@ package body PKG_graficos is
    ------------------------------------------------------------------------
    -- Función que devuelve la posición de un avion dentro del buffer
    -----------------------------------------------------------------------
-   FUNCTION Posicion_Buffer(Id : T_IdAvion; aereovia_inicial: T_Rango_AereoVia;
+   FUNCTION Posicion_Buffer(Id : T_IdAvion; aerovia_inicial: T_Rango_AeroVia;
                             Buffer: Pkg_Buffer_aviones.T_Buffer) RETURN T_RangoBufferAviones is
       avion_aux     : T_RecordAvion;
       pos           : T_RangoBufferAviones;
@@ -181,7 +231,7 @@ package body PKG_graficos is
       BEGIN
           pos := Pkg_Buffer_aviones.Posicion_Primer_Item(Buffer);
           avion_aux := Pkg_Buffer_aviones.Consulta_Item(pos, Buffer);
-          WHILE avion_aux.Id /= Id or avion_aux.aereovia_inicial /= aereovia_inicial LOOP
+          WHILE avion_aux.Id /= Id or avion_aux.aerovia_inicial /= aerovia_inicial LOOP
              pos := pos+1;
              avion_aux := Pkg_Buffer_aviones.Consulta_Item(pos, Buffer);
           END LOOP;
@@ -194,7 +244,7 @@ package body PKG_graficos is
    END Posicion_Buffer;
 
 
-   FUNCTION Posicion_Buffer(Id : T_IdAvion; aereovia_inicial: T_Rango_AereoVia;
+   FUNCTION Posicion_Buffer(Id : T_IdAvion; aerovia_inicial: T_Rango_AeroVia;
                             Buffer: Pkg_Buffer_aviones_en_pista.T_Buffer) RETURN T_RangoBufferAvionesAterrizando is
       avion_aux     : T_RecordAvion;
       pos           : T_RangoBufferAvionesAterrizando;
@@ -202,7 +252,7 @@ package body PKG_graficos is
       BEGIN
           pos := Pkg_Buffer_aviones_en_pista.Posicion_Primer_Item(Buffer);
           avion_aux := Pkg_Buffer_aviones_en_pista.Consulta_Item(pos, Buffer);
-          WHILE avion_aux.Id /= Id or avion_aux.aereovia_inicial /= aereovia_inicial LOOP
+          WHILE avion_aux.Id /= Id or avion_aux.aerovia_inicial /= aerovia_inicial LOOP
              pos := pos+1;
              avion_aux := Pkg_Buffer_aviones_en_pista.Consulta_Item(pos, Buffer);
           END LOOP;
@@ -219,7 +269,7 @@ package body PKG_graficos is
    ------------------------------------------------------------------------
    PROCEDURE Aparece(avion : in T_RecordAvion) is
    BEGIN
-      Pkg_Buffer_Aviones.Insertar_Ultimo_Item(avion, buffer_aviones(avion.aereovia));
+      Pkg_Buffer_Aviones.Insertar_Ultimo_Item(avion, buffer_aviones(avion.aerovia));
    END Aparece;
 
    PROCEDURE Aparece_En_Pista(avion : in T_RecordAvion) is
@@ -235,8 +285,8 @@ package body PKG_graficos is
       pos : T_RangoBufferAviones;
    BEGIN
       -- Buscar posición del avion dentro del buffer
-      pos := Posicion_Buffer(avion.id, avion.aereovia_inicial, Buffer_Aviones(avion.aereovia));
-      Pkg_Buffer_Aviones.Borrar_Item(pos, buffer_aviones(avion.aereovia));
+      pos := Posicion_Buffer(avion.id, avion.aerovia_inicial, Buffer_Aviones(avion.aerovia));
+      Pkg_Buffer_Aviones.Borrar_Item(pos, buffer_aviones(avion.aerovia));
       exception
        when event: others =>
         PKG_debug.Escribir("ERROR en Desaparece avion: " & Exception_Name(Exception_Identity(event)));
@@ -248,7 +298,7 @@ package body PKG_graficos is
       pos : T_RangoBufferAvionesAterrizando;
    BEGIN
       -- Buscar posición del avion dentro del buffer
-      pos := Posicion_Buffer(avion.id, avion.aereovia_inicial, buffer_aviones_en_pista);
+      pos := Posicion_Buffer(avion.id, avion.aerovia_inicial, buffer_aviones_en_pista);
       Pkg_Buffer_aviones_en_pista.Borrar_Item(pos, buffer_aviones_en_pista);
       exception
        when event: others =>
@@ -259,24 +309,24 @@ package body PKG_graficos is
    ------------------------------------------------------------------------
    -- Función que devuelve las coordenadas de la posición inicial de un objeto
    ------------------------------------------------------------------------
-   FUNCTION Pos_Inicio(aereovia : T_Rango_AereoVia) RETURN T_Punto IS
+   FUNCTION Pos_Inicio(aerovia : T_Rango_AeroVia) RETURN T_Punto IS
    BEGIN
-      if aereovia mod 2 = 0 then
-         RETURN (X=>X_INICIO_DER_AVION, Y=>y_aereovia(aereovia));
+      if aerovia mod 2 = 0 then
+         RETURN (X=>X_INICIO_DER_AVION, Y=>y_aerovia(aerovia));
       else
-         RETURN (X=>0, Y=>y_aereovia(aereovia));
+         RETURN (X=>0, Y=>y_aerovia(aerovia));
       end if;
    END Pos_Inicio;
 
-   FUNCTION Pos_Inicio(pos_x: T_CoordenadaX; aereovia : T_Rango_AereoVia) RETURN T_Punto IS
+   FUNCTION Pos_Inicio(pos_x: T_CoordenadaX; aerovia : T_Rango_AeroVia) RETURN T_Punto IS
    BEGIN
-      RETURN (X=>pos_x, Y=>y_aereovia(aereovia));
+      RETURN (X=>pos_x, Y=>y_aerovia(aerovia));
    END Pos_Inicio;
 
 
-   FUNCTION Pos_Inicio(pista : T_PistaAterrizaje) RETURN T_Punto IS
+   FUNCTION Pos_Inicio(pista : T_Rango_Pista) RETURN T_Punto IS
    BEGIN
-      return (X=>x_pista(T_PistaAterrizaje'Pos(pista))+TAM_AVION+20, Y=>Y_INICIO_PISTA);
+      return (X=>x_pista(pista)+TAM_AVION+20, Y=>Y_INICIO_PISTA);
    END Pos_Inicio;
 
 
@@ -291,15 +341,15 @@ package body PKG_graficos is
       avion.pos.x := Nueva_PosicionX(avion.pos.x, avion.velocidad.x);
 
       -- Buscar posición del avion dentro del buffer
-      pos := Posicion_Buffer(avion.Id, avion.aereovia_inicial, buffer_aviones(avion.aereovia));
-      Pkg_Buffer_aviones.Actualiza_Item(pos, avion, buffer_aviones(avion.aereovia));
+      pos := Posicion_Buffer(avion.Id, avion.aerovia_inicial, buffer_aviones(avion.aerovia));
+      Pkg_Buffer_aviones.Actualiza_Item(pos, avion, buffer_aviones(avion.aerovia));
 
       Detectar_Avion_Mas_Cercano(avion, avion_cercano, dist_obstaculo);
 
-      IF (avion.id /= avion_cercano.id or avion.aereovia_inicial /= avion_cercano.aereovia_inicial) and dist_obstaculo < TAM_AVION then
-         PKG_debug.Escribir("colision entre: " & T_IdAvion'Image(avion.id) & "-" & T_Rango_AereoVia'Image(avion.aereovia_inicial)
-                              & "  " & T_IdAvion'Image(avion_cercano.id) & "-" & T_Rango_AereoVia'Image(avion_cercano.aereovia_inicial)& "   distancia:"&Integer'Image(dist_obstaculo));
-         RAISE DETECTADA_COLISION;
+      IF (avion.id /= avion_cercano.id or avion.aerovia_inicial /= avion_cercano.aerovia_inicial) and dist_obstaculo < TAM_AVION then
+         PKG_debug.Escribir("colision entre: " & T_IdAvion'Image(avion.id) & "-" & T_Rango_AeroVia'Image(avion.aerovia_inicial)
+                              & "  " & T_IdAvion'Image(avion_cercano.id) & "-" & T_Rango_AeroVia'Image(avion_cercano.aerovia_inicial)& "   distancia:"&Integer'Image(dist_obstaculo));
+         RAISE DETECTADA_POSIBLE_COLISION;
       END IF;
 
    end Actualiza_Movimiento;
@@ -311,14 +361,14 @@ package body PKG_graficos is
       avion.pos.y := Nueva_PosicionY(avion.pos.y, avion.velocidad.y);
 
       -- Buscar posición del avion dentro del buffer
-      pos := Posicion_Buffer(avion.Id, avion.aereovia_inicial, buffer_aviones_en_pista);
+      pos := Posicion_Buffer(avion.Id, avion.aerovia_inicial, buffer_aviones_en_pista);
       Pkg_Buffer_aviones_en_pista.Actualiza_Item(pos, avion, buffer_aviones_en_pista);
 
    end Actualiza_Movimiento_En_Pista;
 
 
    ------------------------------------------------------------------------
-   -- calcula la nueva posición de la coordenad X, comprobando los límites de una aereovía
+   -- calcula la nueva posición de la coordenad X, comprobando los límites de una aerovía
    -- y teniendo en cuenta un movimiento cíclico en la misma
    ------------------------------------------------------------------------
    function Nueva_PosicionX(pos_actual_x : T_CoordenadaX; vel_x : T_RangoVelocidad) return T_CoordenadaX is
@@ -341,7 +391,7 @@ package body PKG_graficos is
    ------------------------------------------------------------------------
    function Fin_Aterrizaje(pos_y : T_CoordenadaY) return Boolean is
    begin
-      return pos_y = T_CoordenadaY'Last;
+      return pos_y = T_CoordenadaY'Last - 20;
    end Fin_Aterrizaje;
 
 
@@ -352,6 +402,25 @@ package body PKG_graficos is
    BEGIN
       Ada.Float_Text_IO.put(Hora_segundos, Float(tiempo_transcurrido), 3, 0);
    END Actualiza_Cronometro;
+
+
+
+    ------------------------------------------------------------------------
+    -- calcula y actualiza la velocidad de aterrizaje, reduciéndola
+    ------------------------------------------------------------------------
+   procedure Reduce_Velocidad_Aterrizaje(avion: in out T_RecordAvion) is
+   begin
+      avion.velocidad.y := T_RangoVelocidad(Float'Ceiling(Float(VELOCIDAD_INICIO_ATERRIZAJE) * (1.0 - Float(avion.pos.y - Y_INICIO_PISTA) / Float(LONGITUD_PISTA))));
+   end Reduce_Velocidad_Aterrizaje;
+
+
+   ---------------------------------------------------------------------
+   -- convertir coordenada x de la pantalla a coordenada x de la rejilla
+   ---------------------------------------------------------------------
+   function Posicion_ZonaEspacioAereo(pos_x : T_CoordenadaX) return T_Rango_Rejilla_X is
+   begin
+      return T_Rango_Rejilla_X(pos_x * TAM_X_REJILLA / (X_INICIO_DER_AVION+1));
+   end Posicion_ZonaEspacioAereo;
 
 
 
@@ -373,11 +442,11 @@ package body PKG_graficos is
       avion_cercano := avion;
       distancia := 0;
 
-      for pos in Pkg_Buffer_Aviones.Posicion_Primer_Item(buffer_aviones(avion.aereovia))..Pkg_Buffer_Aviones.Posicion_Ultimo_Item(buffer_aviones(avion.aereovia)) loop
+      for pos in Pkg_Buffer_Aviones.Posicion_Primer_Item(buffer_aviones(avion.aerovia))..Pkg_Buffer_Aviones.Posicion_Ultimo_Item(buffer_aviones(avion.aerovia)) loop
 
-         avion_aux := Pkg_Buffer_Aviones.Consulta_Item(T_RangoBufferAviones(pos), buffer_aviones(avion.aereovia));
+         avion_aux := Pkg_Buffer_Aviones.Consulta_Item(T_RangoBufferAviones(pos), buffer_aviones(avion.aerovia));
 
-         if avion.id /= avion_aux.id or avion.aereovia_inicial /= avion_aux.aereovia_inicial then
+         if avion.id /= avion_aux.id or avion.aerovia_inicial /= avion_aux.aerovia_inicial then
             dist_x := abs(avion_aux.pos.x - avion.pos.x);
 
             if dist_x < min_dist_x then
@@ -426,31 +495,38 @@ package body PKG_graficos is
       pos_primer_avion_en_pista : T_RangoBufferAvionesAterrizando;
       pos_ultimo_avion_en_pista : T_RangoBufferAvionesAterrizando;
       pos_avion_en_pista        : T_RangoBufferAvionesAterrizando;
+      SEPARACION_LINEAS_DISCONTINUAS : constant := 10;
+      LONGITUD_LINEA_DISCONTINUA : constant := 5;
 
    begin
 
-      -- dibujar aereovias
-      set_text(pangoLayout, "aereovias");
-      Draw_Layout(pixmap, Black_Gc, 1, ALTURA_AEREOVIA-20, pangoLayout);
-      for i in T_Rango_AereoVia loop
-         set_text(pangoLayout, T_Rango_AereoVia'Image(i));
-         Draw_Layout(pixmap, Black_Gc, 0, Gint(y_aereovia(i)), pangoLayout);
-         Draw_Line(Pixmap, Black_Gc, 1, Gint(i*ALTURA_AEREOVIA), 5, Gint(i*ALTURA_AEREOVIA));
+      -- dibujar aerovias
+      set_text(pangoLayout, "aerovias");
+      Draw_Layout(pixmap, Black_Gc, 1, ALTURA_AEROVIA-20, pangoLayout);
+      for i in T_Rango_AeroVia loop
+         set_text(pangoLayout, T_Rango_AeroVia'Image(i));
+         Draw_Layout(pixmap, Black_Gc, 0, Gint(y_aerovia(i)), pangoLayout);
+         for j in 1..CANVAS_WIDTH/SEPARACION_LINEAS_DISCONTINUAS loop
+            Draw_Line(Pixmap, Black_Gc, Gint(1+j*SEPARACION_LINEAS_DISCONTINUAS), Gint(i*ALTURA_AEROVIA), Gint(LONGITUD_LINEA_DISCONTINUA+j*SEPARACION_LINEAS_DISCONTINUAS), Gint(i*ALTURA_AEROVIA));
+         end loop;
       end loop;
-      Draw_Line(Pixmap, Black_Gc, 1, Gint((T_Rango_AereoVia'Last+1)*ALTURA_AEREOVIA), 5, Gint((T_Rango_AereoVia'Last+1)*ALTURA_AEREOVIA));
+      for j in 1..CANVAS_WIDTH/SEPARACION_LINEAS_DISCONTINUAS loop
+         Draw_Line(Pixmap, Black_Gc, Gint(1+j*SEPARACION_LINEAS_DISCONTINUAS), Gint((T_Rango_AeroVia'Last+1)*ALTURA_AEROVIA), Gint(LONGITUD_LINEA_DISCONTINUA+j*SEPARACION_LINEAS_DISCONTINUAS), Gint((T_Rango_AeroVia'Last+1)*ALTURA_AEROVIA));
+      end loop;
+      --Draw_Line(Pixmap, Black_Gc, 1, Gint((T_Rango_AeroVia'Last+1)*ALTURA_AEROVIA), 5, Gint((T_Rango_AeroVia'Last+1)*ALTURA_AEROVIA));
 
 
       Dibujar_Pistas_Aterrizaje(Pixmap);
 
 
-      -- dibujar aviones en aereovias
-      FOR aereovia IN T_Rango_AereoVia LOOP
-         if not Pkg_Buffer_aviones.Vacio(buffer_aviones(aereovia)) then
-            pos_primer_avion := Pkg_Buffer_aviones.Posicion_Primer_Item(buffer_aviones(aereovia));
-            pos_ultimo_avion := Pkg_Buffer_aviones.Posicion_Ultimo_Item(buffer_aviones(aereovia));
+      -- dibujar aviones en aerovias
+      FOR aerovia IN T_Rango_AeroVia LOOP
+         if not Pkg_Buffer_aviones.Vacio(buffer_aviones(aerovia)) then
+            pos_primer_avion := Pkg_Buffer_aviones.Posicion_Primer_Item(buffer_aviones(aerovia));
+            pos_ultimo_avion := Pkg_Buffer_aviones.Posicion_Ultimo_Item(buffer_aviones(aerovia));
             pos_avion := pos_primer_avion;
             loop
-               Item_avion := Pkg_Buffer_aviones.Consulta_Item(pos_avion, buffer_aviones(aereovia));
+               Item_avion := Pkg_Buffer_aviones.Consulta_Item(pos_avion, buffer_aviones(aerovia));
 
                Dibujar_Avion(Pixmap, Item_avion);
 
@@ -488,11 +564,11 @@ package body PKG_graficos is
    procedure Dibujar_Pistas_Aterrizaje(Pixmap: Cairo_Context) is
    begin
       -- Dibujar asfalto
-      Draw_Rectangle (Pixmap, Grey_Gc, Filled => True,
+      Draw_Rectangle (Pixmap, Red_Gc, Filled => True,
                       X     => X_INICIO_PISTA1,  Y      => Y_INICIO_PISTA,
                       Width => ANCHO_PISTA, Height => LONGITUD_PISTA);
 
-      Draw_Rectangle (Pixmap, Grey_Gc, Filled => True,
+      Draw_Rectangle (Pixmap, Green_Gc, Filled => True,
                       X     => X_INICIO_PISTA2,  Y      => Y_INICIO_PISTA,
                       Width => ANCHO_PISTA, Height => LONGITUD_PISTA);
 
@@ -529,9 +605,9 @@ package body PKG_graficos is
 
       -- Dibujar los números de pista
       set_text(pangoLayout, "1");
-      Draw_Layout(pixmap, Red_Gc, Gint(X_INICIO_PISTA1+ANCHO_PISTA/2-3), Gint(Y_INICIO_PISTA+LONGITUD_PISTA-35), pangoLayout);
+      Draw_Layout(pixmap, Black_Gc, Gint(X_INICIO_PISTA1+ANCHO_PISTA/2-3), Gint(Y_INICIO_PISTA+LONGITUD_PISTA-35), pangoLayout);
       set_text(pangoLayout, "2");
-      Draw_Layout(pixmap, Green_Gc, Gint(X_INICIO_PISTA2+ANCHO_PISTA/2-3), Gint(Y_INICIO_PISTA+LONGITUD_PISTA-35), pangoLayout);
+      Draw_Layout(pixmap, Black_Gc, Gint(X_INICIO_PISTA2+ANCHO_PISTA/2-3), Gint(Y_INICIO_PISTA+LONGITUD_PISTA-35), pangoLayout);
 
 
    end Dibujar_Pistas_Aterrizaje;
@@ -603,7 +679,7 @@ package body PKG_graficos is
       -- Dibujar identificador del avion
       set_text(pangoLayout, T_IdAvion'Image(avion.id));
       Draw_Layout(pixmap, White_Gc, x_identificador, Gint(avion.Pos.Y-20), pangoLayout);
-      set_text(pangoLayout,T_Rango_AereoVia'Image(avion.aereovia_inicial));
+      set_text(pangoLayout,T_Rango_AeroVia'Image(avion.aerovia_inicial));
       Draw_Layout(pixmap, Black_Gc, x_identificador+20, Gint(avion.Pos.Y-20), pangoLayout);
 
       if avion.tren_aterrizaje then
@@ -692,6 +768,63 @@ package body PKG_graficos is
    END Dibujar_Canvas_Cronometro;
 
 
+
+     package Event_Cb is new Gtk.Handlers.Return_Callback
+     (Widget_Type => T_Area_Dibujo_Record,
+      Return_Type => Boolean);
+
+   procedure Crear_Area_Dibujo (area_dibujo : out T_Area_Dibujo) is
+   begin
+      area_dibujo := new T_Area_Dibujo_Record;
+      Inicializar_Area_Dibujo(area_dibujo);
+   end Crear_Area_Dibujo;
+
+
+   procedure Inicializar_Area_Dibujo(area_dibujo : T_Area_Dibujo) is
+   begin
+
+      Gtk.Drawing_Area.Initialize (area_dibujo);
+
+      --Event_Cb.Connect (area_dibujo, "configure_event",
+      --                  Event_Cb.To_Marshaller (Configurar_PixMap'Access));
+      Event_Cb.Connect (Widget => area_dibujo, Name => "draw",
+                        Marsh => Event_Cb.To_Marshaller (Dibujar_CairoContext'Access));
+      Event_Cb.Connect (Widget => area_dibujo, Name => "button_press_event",
+                        Marsh => Event_Cb.To_Marshaller (Posicion_Raton'Access));
+
+   end Inicializar_Area_Dibujo;
+
+
+
+   function Dibujar_CairoContext (area_dibujo        : access T_Area_Dibujo_Record'Class;
+                                  Event         : Gdk.Event.Gdk_Event) return Boolean
+   is
+      cr : Cairo.Cairo_Context;
+   begin
+      cr := Gdk.Cairo.Create(Get_Window(area_dibujo));
+
+      Draw_Objetos_Graficos(cr);
+
+      Cairo.Destroy(cr);
+
+
+      return True;
+   end Dibujar_CairoContext;
+
+
+
+   function Posicion_Raton (area_dibujo        : access T_Area_Dibujo_Record'Class;
+                            Event         : Gdk.Event.Gdk_Event) return Boolean
+   is
+      x, y : Gdouble;
+   begin
+      PKG_debug.Escribir("posicion RATON: ");
+      Gdk.Event.Get_Coords(Event, x, y);
+
+      PKG_debug.Escribir("posicion cursor: " & Gdouble'Image(x) & " - " & Gdouble'Image(y));
+
+      return True;
+   end Posicion_Raton;
 
 
 --***************************************************************

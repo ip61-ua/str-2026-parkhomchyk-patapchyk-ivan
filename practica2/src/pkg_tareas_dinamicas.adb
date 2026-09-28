@@ -25,11 +25,11 @@ package body Pkg_tareas_dinamicas is
          & " color ="
          & T_Color'Image (ptr_avion.color)
          & " aereovia ="
-         & T_Rango_Aereovia'Image (ptr_avion.aereovia)
+         & T_Rango_Aerovia'Image (ptr_avion.aeRovia)
          & " aereovia_inicial ="
-         & T_Rango_Aereovia'Image (Ptr_Avion.aereovia_inicial)
+         & T_Rango_Aerovia'Image (Ptr_Avion.aerovia_inicial)
          & " pista ="
-         & T_PistaAterrizaje'Image (Ptr_Avion.pista)
+         & T_Rango_Pista'Image (Ptr_Avion.pista)
          & " tren_aterrizaje ="
          & Boolean'Image (Ptr_Avion.tren_aterrizaje)
          & " }");
@@ -41,7 +41,7 @@ package body Pkg_tareas_dinamicas is
       end loop;
 
    exception
-      when Detectada_Colision =>
+      when DETECTADA_POSIBLE_COLISION =>
          PKG_debug.Escribir
            ("El avión con id "
             & T_IdAvion'Image (ptr_avion.id)

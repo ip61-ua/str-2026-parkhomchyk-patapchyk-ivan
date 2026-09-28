@@ -5,7 +5,6 @@
 with pkg_tipos; USE pkg_tipos;
 with PKG_bufferGenerico;
 with Gdk.Types;         use Gdk.Types;
-with Gdk.Cairo;
 with Cairo;             use Cairo;
 with Pango.Font;        use Pango.Font;
 with Gtkada.Style;      use Gtkada.Style;
@@ -16,9 +15,13 @@ pragma Elaborate_All (Gtk.Handlers);
 with Gtk.Main;          use Gtk.Main;
 with Glib.Main;         use Glib.Main;
 pragma Elaborate_All (Gtk.Main);
-with Pango.Layout;       use Pango.Layout;
+with Pango.Layout;      use Pango.Layout;
 with Gdk.RGBA;
 with Glib;              use Glib;
+with Gdk.Pixbuf;
+with Gdk.Event;         use Gdk.Event;
+with Gtk.Button;        use Gtk.Button;
+
 
 
 PACKAGE PKG_graficos IS
@@ -40,16 +43,16 @@ PACKAGE PKG_graficos IS
    PROCEDURE Desaparece_En_Pista(avion : in T_RecordAvion);
 
    -- Función que devuelve las coordenadas de la posición inicial de un objeto
-   FUNCTION Pos_Inicio(aereovia : T_Rango_AereoVia) RETURN T_Punto;
-   FUNCTION Pos_Inicio(pos_x: T_CoordenadaX; aereovia : T_Rango_AereoVia) RETURN T_Punto;
-   FUNCTION Pos_Inicio(pista : T_PistaAterrizaje) RETURN T_Punto;
+   FUNCTION Pos_Inicio(aerovia : T_Rango_AeroVia) RETURN T_Punto;
+   FUNCTION Pos_Inicio(pos_x: T_CoordenadaX; aerovia : T_Rango_AeroVia) RETURN T_Punto;
+   FUNCTION Pos_Inicio(pista : T_Rango_Pista) RETURN T_Punto;
 
 
    -- Actualiza el movimiento de un avion dependiendo de su velocidad
    PROCEDURE Actualiza_Movimiento(avion : IN OUT T_RecordAvion);
    PROCEDURE Actualiza_Movimiento_En_Pista(avion : IN OUT T_RecordAvion);
 
-   -- calcula la nueva posición de la coordenad X, comprobando los límites de una aereovía
+   -- calcula la nueva posición de la coordenad X, comprobando los límites de una aerovía
    -- y teniendo en cuenta un movimiento cíclico en la misma
    function Nueva_PosicionX(pos_actual_x : T_CoordenadaX; vel_x : T_RangoVelocidad) return T_CoordenadaX;
 
@@ -60,11 +63,26 @@ PACKAGE PKG_graficos IS
    -- actualiza el valor del cronómetro
    PROCEDURE Actualiza_Cronometro(tiempo_transcurrido: Duration);
 
+   -- calcula y actualiza la velocidad de aterrizaje, reduciéndola
+   procedure Reduce_Velocidad_Aterrizaje(avion: in out T_RecordAvion);
+
+   -- convertir coordenada x de la pantalla a coordenada x de la rejilla
+   function Posicion_ZonaEspacioAereo(pos_x : T_CoordenadaX) return T_Rango_Rejilla_X;
+
+
+
+
+
    -----------------------------------------------------------------
    -- DECLARACIONES PRIVADAS
    -----------------------------------------------------------------
 
 private
+     subtype T_Area_Dibujo_Record is Gtk.Drawing_Area.Gtk_Drawing_Area_Record;
+
+      type T_Area_Dibujo is access all T_Area_Dibujo_Record'Class;
+
+
       X_CRONOMETRO : CONSTANT := CANVAS_WIDTH-100;
       Y_CRONOMETRO : CONSTANT := 40;
 
@@ -75,22 +93,23 @@ private
 
       X_INICIO_PISTA1 : CONSTANT := 150;
       X_INICIO_PISTA2 : CONSTANT := 450;
+      Y_INICIO_PISTA : CONSTANT := ALTURA_AEROVIA*(NUM_AEROVIAS+1);
       ANCHO_PISTA : CONSTANT := 100;
-      LONGITUD_PISTA : CONSTANT := 200;
+      LONGITUD_PISTA : CONSTANT := CANVAS_HEIGHT - Y_INICIO_PISTA;
 
 
-      Y_AEREOVIA1 : CONSTANT := 70;
-      Y_AEREOVIA2 : CONSTANT := Y_AEREOVIA1+ALTURA_AEREOVIA;
-      Y_AEREOVIA3 : CONSTANT := Y_AEREOVIA2+ALTURA_AEREOVIA;
-      Y_AEREOVIA4 : CONSTANT := Y_AEREOVIA3+ALTURA_AEREOVIA;
-      Y_AEREOVIA5 : CONSTANT := Y_AEREOVIA4+ALTURA_AEREOVIA;
-      Y_AEREOVIA6 : CONSTANT := Y_AEREOVIA5+ALTURA_AEREOVIA;
+      Y_AEROVIA1 : CONSTANT := 80;
+      Y_AEROVIA2 : CONSTANT := Y_AEROVIA1+ALTURA_AEROVIA;
+      Y_AEROVIA3 : CONSTANT := Y_AEROVIA2+ALTURA_AEROVIA;
+      Y_AEROVIA4 : CONSTANT := Y_AEROVIA3+ALTURA_AEROVIA;
+      Y_AEROVIA5 : CONSTANT := Y_AEROVIA4+ALTURA_AEROVIA;
+      Y_AEROVIA6 : CONSTANT := Y_AEROVIA5+ALTURA_AEROVIA;
 
-      -- array con las filas centrales de las aereovias
-      y_aereovia : array (T_Rango_AereoVia) of integer := (Y_AEREOVIA1, Y_AEREOVIA2, Y_AEREOVIA3, Y_AEREOVIA4, Y_AEREOVIA5, Y_AEREOVIA6);
+      -- array con las filas centrales de las aerovias
+      y_aerovia : array (T_Rango_AeroVia) of integer := (Y_AEROVIA1, Y_AEROVIA2, Y_AEROVIA3, Y_AEROVIA4, Y_AEROVIA5, Y_AEROVIA6);
 
       -- array con las columnas centrales de las pistas
-      x_pista : array (T_Rango_Pista) of integer := (X_INICIO_PISTA1, X_INICIO_PISTA2);
+      x_pista : array (T_Rango_Pista) of integer := (0, X_INICIO_PISTA1, X_INICIO_PISTA2);
 
 
       -- Fuentes de letra utilizados
@@ -129,16 +148,15 @@ private
       --package Gint_Timeout is new Gtk.Main.Timeout (Gtk_Drawing_Area);
       package Destroyed is new Gtk.Handlers.Callback (Widget_Type => Gtk_Window_Record);
 
-      procedure Draw_Complex (Pixmap : Cairo_Context);
-
-      function Draw_Complex_Buffer (Area : Gtk_Drawing_Area) return Boolean;
+      Procedure Draw_Objetos_Graficos (cr : Cairo_Context);
+      function Draw_Area_Dibujo (area_dibujo : Gtk_Drawing_Area) return Boolean;
 
       procedure Quit (Win : access Gtk_Window_Record'Class);
 
 
       -- DECLARACIÓN DE BUFFERS CIRCULARES PARA GUARDAR INFORMACIÓN DE LA INTERFAZ
       package Pkg_Buffer_aviones is new Pkg_bufferGenerico(tipo_dato=>T_RecordAvion, tam=>T_RangoBufferAviones);
-      buffer_aviones : array(T_Rango_AereoVia) of Pkg_Buffer_aviones.T_Buffer;
+      buffer_aviones : array(T_Rango_AeroVia) of Pkg_Buffer_aviones.T_Buffer;
 
       package Pkg_Buffer_aviones_en_pista is new Pkg_bufferGenerico(tipo_dato=>T_RecordAvion, tam=>T_RangoBufferAvionesAterrizando);
       buffer_aviones_en_pista : Pkg_Buffer_aviones_en_pista.T_Buffer;
@@ -146,14 +164,17 @@ private
       -- Procedure que se encarga de inicializar la interfaz gráfica
       procedure Inicializar_Interfaz_Grafica;
 
+      -- Procedure que envía un mensaje a la torre de control para activar su ejecución
+      procedure Iniciar_Torre_Control(button : access Gtk_Button_Record'Class);
+
       -- Procedure que inicializa el buffer de aviones
       procedure Inicializar_Buffer_Aviones;
 
       -- Función que devuelve la posición de un avion dentro del buffer
-      FUNCTION Posicion_Buffer(Id : T_IdAvion; aereovia_inicial: T_Rango_AereoVia;
+      FUNCTION Posicion_Buffer(Id : T_IdAvion; aerovia_inicial: T_Rango_AeroVia;
                                buffer: Pkg_Buffer_aviones.T_Buffer) return T_RangoBufferAviones;
 
-      FUNCTION Posicion_Buffer(Id : T_IdAvion; aereovia_inicial: T_Rango_AereoVia;
+      FUNCTION Posicion_Buffer(Id : T_IdAvion; aerovia_inicial: T_Rango_AeroVia;
                             Buffer: Pkg_Buffer_aviones_en_pista.T_Buffer) RETURN T_RangoBufferAvionesAterrizando;
 
 
@@ -195,6 +216,18 @@ private
 
       -- Dibujar el cronometro
       PROCEDURE Dibujar_Canvas_Cronometro(Pixmap : Cairo_Context);
+
+
+      function Dibujar_CairoContext (area_dibujo : access T_Area_Dibujo_Record'Class;
+                                     Event       : Gdk.Event.Gdk_Event) return Boolean;
+      function Posicion_Raton (area_dibujo : access T_Area_Dibujo_Record'Class;
+                               Event       : Gdk.Event.Gdk_Event) return Boolean;
+
+
+      procedure Crear_Area_Dibujo (area_dibujo : out T_Area_Dibujo);
+      procedure Inicializar_Area_Dibujo (area_dibujo : T_Area_Dibujo);
+
+
 
 
 end PKG_graficos;

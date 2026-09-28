@@ -5,9 +5,6 @@
 **************************************************************************
 **************************************************************************
  
+======================INICIO TASK Torre_Control
 Inicializando Entorno Gr醘ico...
 Entorno Gr醘ico Inicializado.
-colision entre:  0- 2   1- 2   distancia: 20
-El avi贸n con id  0 no puede despegar por colisi贸n
-colision entre:  1- 1   2- 1   distancia: 9
-El avi贸n con id  1 no puede despegar por colisi贸n

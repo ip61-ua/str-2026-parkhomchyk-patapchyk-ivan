@@ -4,6 +4,9 @@ with pkg_graficos;         use pkg_graficos;
 with pkg_tipos;            use pkg_tipos;
 with Ada.Numerics.Discrete_Random;
 with Pkg_tareas_dinamicas; use Pkg_tareas_dinamicas;
+with Pkg_Cronometro_real;  use Pkg_Cronometro_real;
+
+-- pregunta del paso 3: La diferencia se apreci al cabo de muchas iteraciones del reloj y debido a la deriva acumulativa que va arrastrando desde el inicio. A diferencia de un método de espera más sofisticado en el que el error solo se reduce a la desviación local.
 
 procedure main is
    package Pkg_Custom_Aleatorio is new
@@ -22,7 +25,7 @@ procedure main is
 begin
    Pkg_Custom_Aleatorio.Reset (Generador);
    for id in T_IdAvion loop
-      for aerovia in T_Rango_AereoVia'First .. 4 loop
+      for aerovia in T_Rango_AeroVia'First .. 4 loop
          -- T_Rango_AereoVia'Last loop
 
          -- inicializar datos de un nuevo avion
@@ -37,10 +40,10 @@ begin
          Ptr_Avion.Pos := Pos_Inicio (aerovia);
          ptr_avion.velocidad.y := 0;
          ptr_avion.tren_aterrizaje := False;
-         ptr_avion.aereovia := aerovia;
-         ptr_avion.aereovia_inicial := aerovia;
+         ptr_avion.aerovia := aerovia;
+         ptr_avion.aerovia_inicial := aerovia;
          ptr_avion.color := blue;
-         ptr_avion.pista := SIN_PISTA;
+         ptr_avion.pista := 0;
 
          -- Crear una tarea para el comportamiento del avion
          tarea_avion := new T_Tarea_Avion (ptr_avion);
