@@ -7,8 +7,42 @@ with Ada.Real_time;          use Ada.Real_time;
 with Pkg_Objetos_Protegidos; use Pkg_Objetos_Protegidos;
 
 package body Pkg_tareas_dinamicas is
+
    task body T_Tarea_Avion is
       retraso : Time := Clock + To_Time_Span (Duration (1));
+   begin
+
+      select
+         delay until retraso;
+         Ptr_Avion.Color := Orange;
+         retraso := Retraso + To_Time_Span (Duration (1));
+      then abort
+         Imprimir (Ptr_Avion);
+         Aparece (Ptr_Avion.all);
+      end select;
+
+      loop
+         Actualiza_Movimiento (Ptr_Avion.all);
+         delay (RETARDO_MOVIMIENTO);
+      end loop;
+
+   exception
+      when DETECTADA_POSIBLE_COLISION =>
+         PKG_debug.Escribir
+           ("El avión con id "
+            & T_IdAvion'Image (ptr_avion.id)
+            & " no puede despegar por colisión");
+         Desaparece (Ptr_Avion.all);
+      when event : others =>
+         PKG_debug.Escribir
+           ("ERROR en TASK ….: "
+            & Exception_Name (Exception_Identity (event))
+            & " "
+            & Exception_Message (event));
+
+   end T_Tarea_Avion;
+
+   procedure Imprimir (Ptr_Avion : Ptr_T_RecordAvion) is
    begin
       Put_line
         ("TASK Avion{"
@@ -35,50 +69,6 @@ package body Pkg_tareas_dinamicas is
          & " tren_aterrizaje ="
          & Boolean'Image (Ptr_Avion.tren_aterrizaje)
          & " }");
-
-      loop
-         Ada.Text_Io.Put_Line ("<<<<<<<<<< P");
-         select
-            Ocupacion_Op_Global.P (Ptr_Avion);
-            Ada.Text_Io.Put_Line ("<<<<<<<<<< A_Punto_De_volar");
-            Ocupacion_Op_Global.A_Punto_De_volar;
-            exit;
-         then abort
-            delay until Retraso;
-            Ada.Text_Io.Put_Line ("<<<<<<<<<< delay until");
-            Ada.Text_Io.Put_Line ("<<<<<<<<<< Orange");
-            Ptr_Avion.Color := Orange;
-            Ada.Text_Io.Put_Line ("<<<<<<<<<< V");
-            Ocupacion_Op_Global.V (Ptr_Avion);
-         end select;
-      end loop;
-
-      Aparece (Ptr_Avion.all);
-
-      loop
-         Ocupacion_Op_Global.P (Ptr_Avion);
-         Ocupacion_Op_Global.Actualiza (Ptr_Avion);
-         Ocupacion_Op_Global.V (Ptr_Avion);
-
-         Actualiza_Movimiento (Ptr_Avion.all);
-         exit when Ocupacion_Op_Global.Es_Final (Ptr_Avion);
-         delay (RETARDO_MOVIMIENTO);
-      end loop;
-
-   exception
-      when DETECTADA_POSIBLE_COLISION =>
-         PKG_debug.Escribir
-           ("El avión con id "
-            & T_IdAvion'Image (ptr_avion.id)
-            & " no puede despegar por colisión");
-         Desaparece (Ptr_Avion.all);
-      when event : others =>
-         PKG_debug.Escribir
-           ("ERROR en TASK ….: "
-            & Exception_Name (Exception_Identity (event))
-            & " "
-            & Exception_Message (event));
-
-   end T_Tarea_Avion;
+   end Imprimir;
 
 end pkg_tareas_dinamicas;
