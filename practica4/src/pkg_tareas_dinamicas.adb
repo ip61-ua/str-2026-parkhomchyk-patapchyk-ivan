@@ -36,21 +36,34 @@ package body Pkg_tareas_dinamicas is
          & Boolean'Image (Ptr_Avion.tren_aterrizaje)
          & " }");
 
-      select
-         Pkg_Objetos_Protegidos.Ocupacion_Op_Global.Intentar_Volar (ptr_avion);
-         Aparece (Ptr_Avion.all);
-         loop
-            Pkg_Objetos_Protegidos.Ocupacion_Op_Global.Intentar_Avanzar
-              (ptr_avion);
-            Actualiza_Movimiento (Ptr_Avion.all);
-            delay (RETARDO_MOVIMIENTO);
-         end loop;
-         Pkg_Objetos_Protegidos.Ocupacion_Op_Global.Intentar_Desvolar
-           (Ptr_avion);
-      or
-         delay until Retraso;
-         Ptr_Avion.Color := Orange;
-      end select;
+      loop
+         Ada.Text_Io.Put_Line ("<<<<<<<<<< P");
+         select
+            Ocupacion_Op_Global.P (Ptr_Avion);
+            Ada.Text_Io.Put_Line ("<<<<<<<<<< A_Punto_De_volar");
+            Ocupacion_Op_Global.A_Punto_De_volar;
+            exit;
+         then abort
+            delay until Retraso;
+            Ada.Text_Io.Put_Line ("<<<<<<<<<< delay until");
+            Ada.Text_Io.Put_Line ("<<<<<<<<<< Orange");
+            Ptr_Avion.Color := Orange;
+            Ada.Text_Io.Put_Line ("<<<<<<<<<< V");
+            Ocupacion_Op_Global.V (Ptr_Avion);
+         end select;
+      end loop;
+
+      Aparece (Ptr_Avion.all);
+
+      loop
+         Ocupacion_Op_Global.P (Ptr_Avion);
+         Ocupacion_Op_Global.Actualiza (Ptr_Avion);
+         Ocupacion_Op_Global.V (Ptr_Avion);
+
+         Actualiza_Movimiento (Ptr_Avion.all);
+         exit when Ocupacion_Op_Global.Es_Final (Ptr_Avion);
+         delay (RETARDO_MOVIMIENTO);
+      end loop;
 
    exception
       when DETECTADA_POSIBLE_COLISION =>
