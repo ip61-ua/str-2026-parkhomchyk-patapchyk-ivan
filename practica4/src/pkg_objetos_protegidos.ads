@@ -9,9 +9,25 @@ package Pkg_Objetos_Protegidos is
 
    protected type Ocupacion_OP is
 
-   Private
+      entry lock (Ptr_Avion : Ptr_T_RecordAvion);
+      procedure unlock (Ptr_Avion : Ptr_T_RecordAvion);
+      entry Zona_seguridad;
+      procedure actualizame;
+      --entry Actualizar (Ptr_Avion : Ptr_T_RecordAvion);
+
+   private
+
+      procedure Escribir (X1 : T_Rango_Rejilla_X; v : Boolean);
+      function alrededor (X1 : T_Rango_Rejilla_X) return boolean;
+      function Seguridad_ocupada return Boolean;
+      function Supera_permitido return Boolean;
+      function es_inicio return Boolean;
+      function es_final return Boolean;
+      procedure Puedo_Avanzar (Result : out Boolean);
+
       N_Aviones_Array : T_Array_N_Aviones := (others => 0);
       Nombre_Array    : T_Array_Ocupacion := (others => (others => False));
+      a               : Ptr_T_RecordAvion;
 
    end Ocupacion_OP;
 

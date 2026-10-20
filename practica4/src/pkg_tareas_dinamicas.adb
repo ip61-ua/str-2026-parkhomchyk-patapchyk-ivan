@@ -16,13 +16,21 @@ package body Pkg_tareas_dinamicas is
          delay until retraso;
          Ptr_Avion.Color := Orange;
          retraso := Retraso + To_Time_Span (Duration (1));
+         Imprimir (Ptr_Avion);
+         Ocupacion_Op_Global.unlock (ptr_avion);
       then abort
+         Ocupacion_Op_Global.Lock (ptr_avion);
+         Ocupacion_Op_Global.Zona_seguridad;
          Imprimir (Ptr_Avion);
          Aparece (Ptr_Avion.all);
+         Ocupacion_Op_Global.unlock (ptr_avion);
       end select;
 
       loop
+         Ocupacion_Op_Global.Lock (ptr_avion);
+         Ocupacion_Op_Global.actualizame;
          Actualiza_Movimiento (Ptr_Avion.all);
+         Ocupacion_Op_Global.unlock (ptr_avion);
          delay (RETARDO_MOVIMIENTO);
       end loop;
 
