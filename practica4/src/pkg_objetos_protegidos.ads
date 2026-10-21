@@ -9,28 +9,34 @@ package Pkg_Objetos_Protegidos is
 
    protected type Ocupacion_OP is
 
-      entry lock (Ptr_Avion : Ptr_T_RecordAvion);
-      procedure unlock (Ptr_Avion : Ptr_T_RecordAvion);
-      entry Zona_seguridad;
-      procedure actualizame;
-      --entry Actualizar (Ptr_Avion : Ptr_T_RecordAvion);
+      entry Lock (Ptr_Avion : Ptr_T_RecordAvion);
+      procedure Unlock (Ptr_Avion : Ptr_T_RecordAvion);
+
+      procedure Zona_Seguridad
+        (Ptr_Avion : Ptr_T_RecordAvion; Surt : out Boolean);
+      procedure Actualizame (Ptr_Avion : Ptr_T_RecordAvion);
 
    private
 
-      procedure Escribir (X1 : T_Rango_Rejilla_X; v : Boolean);
-      function alrededor (X1 : T_Rango_Rejilla_X) return boolean;
-      function Seguridad_ocupada return Boolean;
-      function Supera_permitido return Boolean;
-      function es_inicio return Boolean;
-      function es_final return Boolean;
-      procedure Puedo_Avanzar (Result : out Boolean);
+      procedure Escribir (Ptr_Avion : Ptr_T_RecordAvion; V : Boolean);
+      procedure Escribir_Pos
+        (Aerovia : T_Rango_AeroVia; X1 : T_Rango_Rejilla_X; V : Boolean);
+      function Alrededor
+        (Aerovia : T_Rango_AeroVia; X1 : T_Rango_Rejilla_X) return Boolean;
+      function Seguridad_Ocupada
+        (Ptr_Avion : Ptr_T_RecordAvion) return Boolean;
+      function Supera_Permitido (Ptr_Avion : Ptr_T_RecordAvion) return Boolean;
+      function Es_Inicio (Ptr_Avion : Ptr_T_RecordAvion) return Boolean;
+      function Es_Final (Ptr_Avion : Ptr_T_RecordAvion) return Boolean;
+      procedure Puedo_Avanzar
+        (Ptr_Avion : Ptr_T_RecordAvion; Result : out Boolean);
 
       N_Aviones_Array : T_Array_N_Aviones := (others => 0);
       Nombre_Array    : T_Array_Ocupacion := (others => (others => False));
-      a               : Ptr_T_RecordAvion;
+      A               : Ptr_T_RecordAvion := null;
 
    end Ocupacion_OP;
 
-   Ocupacion_Op_Global : Ocupacion_Op;
+   Ocupacion_Op_Global : Ocupacion_OP;
 
 end Pkg_Objetos_Protegidos;
