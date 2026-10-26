@@ -1,0 +1,14 @@
+ 
+**************************************************************************
+**************************************************************************
+          PRACTICA STR: CONTROL DE TRAFICO AEREO
+**************************************************************************
+**************************************************************************
+ 
+======================INICIO TASK Torre_Control
+Inicializando Entorno Gr醘ico...
+Entorno Gr醘ico Inicializado.
+colision entre:  1- 3   2- 3   distancia: 9
+El avi贸n con id  1 no puede despegar por colisi贸n
+colision entre:  1- 4   2- 4   distancia: 10
+El avi贸n con id  1 no puede despegar por colisi贸n
