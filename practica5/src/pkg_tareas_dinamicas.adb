@@ -5,13 +5,17 @@ with PKG_graficos;           use PKG_graficos;
 with PKG_tipos;              use PKG_tipos;
 with Ada.Calendar;           use Ada.Calendar;
 with Pkg_Objetos_Protegidos; use Pkg_Objetos_Protegidos;
+with Pkg_Torre_Control;      use Pkg_Torre_Control;
 
 package body Pkg_tareas_dinamicas is
 
    task body T_Tarea_Avion is
-      antes  : Time := Clock;
-      ahora  : Time;
-      Avanzo : Boolean := False;
+      antes     : Time := Clock;
+      ahora     : Time;
+      Avanzo    : Boolean := False;
+      Desciendo : Boolean := False;
+      He_bajado : Boolean := False;
+
    begin
       loop
          declare
@@ -23,18 +27,58 @@ package body Pkg_tareas_dinamicas is
                Ptr_Avion.Color := Orange;
             end if;
             Imprimir (Ptr_Avion);
-
             Aparece (Ptr_Avion.all);
 
             loop
-               Ocupacion_Op_global (Ptr_Avion.aerovia).Actualizame
-                 (Ptr_Avion, Avanzo);
+               if Desciendo and Ptr_Avion.Aerovia < Num_Aerovias then
 
-               if Avanzo then
-                  Actualiza_Movimiento (Ptr_Avion.all);
+                  Ocupacion_Op_global (Ptr_Avion.Aerovia + 1)
+                    .Hay_Hueco_Para_Bajar (Ptr_Avion, He_bajado);
+
+                  if He_Bajado then
+                     Ocupacion_Op_global (Ptr_Avion.Aerovia).desocupar
+                       (Ptr_Avion);
+
+                     Desaparece (Ptr_Avion.all);
+
+                     Ptr_Avion.Aerovia := Ptr_Avion.Aerovia + 1;
+                     Ptr_Avion.Velocidad.X := -1 * Ptr_Avion.Velocidad.X;
+                     Ptr_Avion.Pos :=
+                       pkg_graficos.Pos_Inicio
+                         (Ptr_Avion.Pos.x, Ptr_Avion.aerovia);
+
+                     Aparece (Ptr_Avion.all);
+
+                     Desciendo := False;
+                     He_Bajado := False;
+
+                     Ptr_Avion.Color := Blue;
+                  end if;
                end if;
 
+               select
+                  Tarea_Torre_Control.Quiero_Descender (Ptr_Avion, Desciendo);
+
+                  if Desciendo then
+                     Ptr_Avion.Color := Yellow;
+                  end if;
+               then abort
+                  Ocupacion_Op_global (Ptr_Avion.aerovia).Actualizame
+                    (Ptr_Avion, Avanzo);
+
+                  if Avanzo then
+                     Actualiza_Movimiento (Ptr_Avion.all);
+                  end if;
+               end select;
+
                delay (RETARDO_MOVIMIENTO);
+
+               if Ptr_Avion.Aerovia = T_Rango_Aerovia'Last then
+                  Desaparece (Ptr_Avion.all);
+                  Ocupacion_Op_Global (Ptr_Avion.aerovia).desocupar
+                    (ptr_avion);
+                  exit;
+               end if;
             end loop;
 
          exception
@@ -52,6 +96,10 @@ package body Pkg_tareas_dinamicas is
                   & " "
                   & Exception_Message (Event));
          end;
+
+         if Ptr_Avion.Aerovia = T_Rango_Aerovia'Last then
+            exit;
+         end if;
       end loop;
    end T_Tarea_Avion;
 

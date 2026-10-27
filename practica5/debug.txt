@@ -8,3 +8,4 @@
 ======================INICIO TASK Torre_Control
 Inicializando Entorno Gráfico...
 Entorno Gráfico Inicializado.
+INICIAR TORRE DE CONTROL

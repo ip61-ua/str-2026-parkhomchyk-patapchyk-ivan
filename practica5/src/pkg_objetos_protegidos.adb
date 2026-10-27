@@ -112,6 +112,32 @@ package body Pkg_Objetos_Protegidos is
 
       end Actualizame;
 
-   end Ocupacion_OP;
+      procedure Reserva_Aerovia_Descenso (Exito : out Boolean) is
+      begin
+         Exito := not Supera_Permitido;
 
+         if Exito then
+            Contador := Contador + 1;
+         end if;
+      end Reserva_Aerovia_Descenso;
+
+      procedure Hay_Hueco_Para_bajar
+        (Ptr_Avion : Ptr_T_Recordavion; exito : out Boolean)
+      is
+         x : T_Rango_Rejilla_X := Posicion_Zonaespacioaereo (Ptr_Avion.Pos.X);
+      begin
+         Exito := Contador <= MAX_AVIONES_AEROVIA and not Alrededor (x);
+
+         if Exito then
+            Escribir (Ptr_avion, true);
+         end if;
+      end Hay_Hueco_Para_bajar;
+
+      procedure desocupar (Ptr_Avion : Ptr_T_RecordAvion) is
+      begin
+         Escribir (Ptr_Avion, false);
+         Contador := Contador - 1;
+      end desocupar;
+
+   end Ocupacion_OP;
 end Pkg_Objetos_Protegidos;

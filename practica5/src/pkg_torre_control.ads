@@ -8,7 +8,8 @@ PACKAGE PKG_Torre_Control IS
 
    TASK Tarea_Torre_Control IS
       ENTRY Iniciar_Torre_Control;
-      -- ENTRY Quiero_Descender (Ptr_Avion : Ptr_T_Recordavion);
+      ENTRY Quiero_Descender
+        (Ptr_Avion : Ptr_T_Recordavion; Permitido : out Boolean);
    END Tarea_Torre_Control;
 
 end PKG_Torre_Control;
