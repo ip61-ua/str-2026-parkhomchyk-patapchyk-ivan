@@ -57,6 +57,11 @@ package body PKG_Torre_Control is
                requeue Pista_Aterrizaje (T_Rango_Pista'val (Pista))
                         .Acceder_A_Pista;
             end Permiso_Aterrizaje;
+         or
+            accept salir_Aterrizaje (Pista : in T_Rango_pista) do
+               Pista_Aterrizaje (pista).Liberar_Pista;
+               Coffee_Time := true;
+            end Salir_Aterrizaje;
          end select;
 
          if Coffee_Time then

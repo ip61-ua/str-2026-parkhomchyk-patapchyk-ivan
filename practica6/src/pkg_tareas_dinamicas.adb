@@ -171,7 +171,29 @@ package body Pkg_tareas_dinamicas is
                      if Pkg_Objetos_Protegidos.Aux_Coinciden_En_Zonas
                           (Mi_X_Pista, Ptr_Avion.Pos.X)
                      then
-                        Put_Line ("CONCIDENCIA");
+                        Desaparece (Ptr_Avion.all);
+                        Ocupacion_Op_Global (Ptr_Avion.aerovia).Desocupar
+                          (Ptr_Avion);
+                        Ptr_Avion.Color := Cyan;
+
+                        Ptr_Avion.Velocidad.X := 0;
+                        Ptr_Avion.Velocidad.y := VELOCIDAD_VUELO;
+
+                        Ptr_Avion.Pos.X := Mi_X_Pista;
+                        Aparece_En_Pista (Ptr_Avion.all);
+
+                        loop
+                           if Fin_Aterrizaje (Ptr_Avion.Pos.y) then
+                              exit;
+                           end if;
+
+                           Reduce_Velocidad_Aterrizaje (Ptr_Avion.all);
+                           Actualiza_Movimiento_En_Pista (Ptr_Avion.all);
+                           delay (RETARDO_MOVIMIENTO);
+                        end loop;
+
+                        Tarea_Torre_Control.salir_Aterrizaje (Ptr_Avion.pista);
+                        Desaparece_En_Pista (Ptr_Avion.all);
                      end if;
                   end if;
                end if;

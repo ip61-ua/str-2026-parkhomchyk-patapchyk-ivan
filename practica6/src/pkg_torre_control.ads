@@ -12,7 +12,7 @@ PACKAGE PKG_Torre_Control IS
         (Ptr_Avion : Ptr_T_Recordavion; Permitido : out Boolean);
       entry Asignar_pista (pista : out T_Rango_pista);
       entry Permiso_Aterrizaje (Pista : in T_Rango_pista);
-      --      entry salir_Aterrizaje (Pista : in T_Rango_pista);
+      entry salir_Aterrizaje (Pista : in T_Rango_pista);
    END Tarea_Torre_Control;
 
    protected type T_Op_Pista_Aterrizaje is
