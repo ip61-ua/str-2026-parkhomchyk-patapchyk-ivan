@@ -4,6 +4,9 @@ package Pkg_Objetos_Protegidos is
 
    subtype T_Num_Aviones is Integer range 0 .. MAX_AVIONES_AEROVIA;
 
+   function aux_Coinciden_En_Zonas
+     (A : T_Coordenadax; b : T_Coordenadax) return Boolean;
+
    protected type Ocupacion_OP is
       entry Zona_Seguridad (Ptr_Avion : Ptr_T_RecordAvion);
       procedure Actualizame

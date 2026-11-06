@@ -4,6 +4,15 @@ with Ada.Text_IO;  use Ada.Text_IO;
 
 package body Pkg_Objetos_Protegidos is
 
+   function aux_Coinciden_En_Zonas
+     (A : T_Coordenadax; b : T_Coordenadax) return Boolean
+   is
+      A1 : T_Rango_Rejilla_X := Posicion_Zonaespacioaereo (a);
+      b1 : T_Rango_Rejilla_X := Posicion_ZonaEspacioAereo (b);
+   begin
+      return A1 - 1 = B1 - 1 and A1 = B1 and A1 + 1 = B1 + 1;
+   end aux_Coinciden_En_Zonas;
+
    protected body Ocupacion_OP is
       entry Zona_Seguridad (Ptr_Avion : Ptr_T_Recordavion)
         when not Seguridad_Ocupada and Not Supera_Permitido
