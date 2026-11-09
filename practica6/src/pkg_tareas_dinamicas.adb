@@ -6,6 +6,8 @@ with PKG_tipos;              use PKG_tipos;
 with Ada.Calendar;           use Ada.Calendar;
 with Pkg_Objetos_Protegidos; use Pkg_Objetos_Protegidos;
 with Pkg_Torre_Control;      use Pkg_Torre_Control;
+with Ada.Dynamic_Priorities;
+with System;
 
 package body Pkg_tareas_dinamicas is
 
@@ -16,6 +18,7 @@ package body Pkg_tareas_dinamicas is
       Esta_Permiso_Aterrizaje : Boolean := False;
       Esta_En_Zona_Pista_x    : Boolean := False;
       Mi_X_Pista              : T_Coordenadax;
+      Fin_Del_Viaje           : Boolean := False;
       procedure Imprimir is
       begin
          if Ptr_Avion /= null then
@@ -137,6 +140,8 @@ package body Pkg_tareas_dinamicas is
       end Permiso_Aterrizaje;
 
    begin
+      Ada.Dynamic_Priorities.Set_Priority (System.Priority (1));
+
       loop
          declare
          begin
@@ -145,6 +150,7 @@ package body Pkg_tareas_dinamicas is
             loop
                if tengo_permiso_descenso and Ptr_Avion.Aerovia < Num_Aerovias
                then
+                  Ada.Dynamic_Priorities.Set_Priority (System.Priority (5));
 
                   Ocupacion_Op_global (Ptr_Avion.Aerovia + 1)
                     .Hay_Hueco_Para_Bajar (Ptr_Avion, He_bajado);
@@ -163,17 +169,28 @@ package body Pkg_tareas_dinamicas is
                delay (RETARDO_MOVIMIENTO);
 
                if Ptr_Avion.Aerovia = T_Rango_Aerovia'Last then
+
                   if not Esta_Asignada_Pista then
+                     Ada.Dynamic_Priorities.Set_Priority
+                       (System.Priority (10));
                      Asignar_Pista;
                   elsif not Esta_Permiso_Aterrizaje then
+                     Ada.Dynamic_Priorities.Set_Priority
+                       (System.Priority (15));
                      Permiso_Aterrizaje;
+                     Ada.Dynamic_Priorities.Set_Priority
+                       (System.Priority (30));
                   elsif not Esta_En_Zona_Pista_x then
                      if Pkg_Objetos_Protegidos.Aux_Coinciden_En_Zonas
                           (Mi_X_Pista, Ptr_Avion.Pos.X)
                      then
-                        Desaparece (Ptr_Avion.all);
+
+                        Ada.Dynamic_Priorities.Set_Priority
+                          (System.Priority (60));
+
                         Ocupacion_Op_Global (Ptr_Avion.aerovia).Desocupar
                           (Ptr_Avion);
+                        Desaparece (Ptr_Avion.all);
                         Ptr_Avion.Color := Cyan;
 
                         Ptr_Avion.Velocidad.X := 0;
@@ -192,8 +209,14 @@ package body Pkg_tareas_dinamicas is
                            delay (RETARDO_MOVIMIENTO);
                         end loop;
 
+                        Ada.Dynamic_Priorities.Set_Priority
+                          (System.Priority (40));
+
                         Tarea_Torre_Control.salir_Aterrizaje (Ptr_Avion.pista);
                         Desaparece_En_Pista (Ptr_Avion.all);
+
+                        Fin_Del_Viaje := True;
+                        exit;
                      end if;
                   end if;
                end if;
@@ -216,9 +239,9 @@ package body Pkg_tareas_dinamicas is
                   & Exception_Message (Event));
          end;
 
-         -- if Ptr_Avion.Aerovia = T_Rango_Aerovia'Last then
-         --    exit;
-         -- end if;
+         if Fin_Del_Viaje then
+            exit;
+         end if;
 
       end loop;
    end T_Tarea_Avion;

@@ -1,6 +1,7 @@
 --******************* PKG_TORRE_CONTROL.ADB *****************************
 -- Paquete que implementa la tarea de la torre de control
 --***********************************************************************
+pragma Queueing_Policy (Priority_Queueing);
 
 with PKG_graficos;
 with PKG_debug;
@@ -16,7 +17,6 @@ package body PKG_Torre_Control is
    -----------------------------------------------------------------------
    task body Tarea_Torre_Control is
       Atender_Descensos : Boolean := False;
-      Coffee_time       : Boolean := False;
       type T_Pista_Circular is mod 2;
       proxima_pista     : T_Pista_Circular := T_Pista_Circular'First;
    begin
@@ -39,35 +39,25 @@ package body PKG_Torre_Control is
                   Ocupacion_Op_Global (T_Rango_AeroVia (via_futuro))
                     .Reserva_Aerovia_Descenso (Permitido);
                end;
-               Coffee_Time := true;
             end Permiso_Descenso;
          or
             accept Asignar_pista (pista : out T_Rango_pista) do
                Pista :=
                  T_Rango_Pista'Val (1 + T_Rango_Pista'Val (proxima_pista));
                proxima_pista := proxima_pista + 1;
-               Coffee_Time := true;
             end Asignar_pista;
          or
             accept Permiso_Aterrizaje (pista : in T_Rango_pista) do
-               -- if T_Rango_Pista = 0 then
-               --    return;
-               -- end if;
-               Coffee_Time := true;
                requeue Pista_Aterrizaje (T_Rango_Pista'val (Pista))
                         .Acceder_A_Pista;
             end Permiso_Aterrizaje;
          or
             accept salir_Aterrizaje (Pista : in T_Rango_pista) do
                Pista_Aterrizaje (pista).Liberar_Pista;
-               Coffee_Time := true;
             end Salir_Aterrizaje;
          end select;
 
-         if Coffee_Time then
-            Coffee_Time := False;
-            delay Duration (2);
-         end if;
+         delay Duration (2);
       end loop;
 
    exception

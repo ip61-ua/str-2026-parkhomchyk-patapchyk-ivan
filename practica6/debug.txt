@@ -9,3 +9,5 @@
 Inicializando Entorno Gráfico...
 Entorno Gráfico Inicializado.
 INICIAR TORRE DE CONTROL
+ERROR en Desaparece avion: CONSTRAINT_ERROR
+ERROR en TASK ....: CONSTRAINT_ERROR pkg_objetos_protegidos.adb:148 range check failed
