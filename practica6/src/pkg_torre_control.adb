@@ -16,15 +16,14 @@ package body PKG_Torre_Control is
    -- DEFINICIÓN DE LA TAREA DE LA TORRE DE CONTROL
    -----------------------------------------------------------------------
    task body Tarea_Torre_Control is
-      Atender_Descensos : Boolean := False;
       type T_Pista_Circular is mod 2;
-      proxima_pista     : T_Pista_Circular := T_Pista_Circular'First;
+      proxima_pista : T_Pista_Circular := T_Pista_Circular'First;
    begin
 
       PKG_debug.Escribir ("======================INICIO TASK Torre_Control");
 
       accept Iniciar_Torre_Control do
-         Atender_Descensos := True;
+         null;
       end Iniciar_Torre_Control;
 
       loop
@@ -40,21 +39,25 @@ package body PKG_Torre_Control is
                     .Reserva_Aerovia_Descenso (Permitido);
                end;
             end Permiso_Descenso;
+
          or
             accept Asignar_pista (pista : out T_Rango_pista) do
                Pista :=
                  T_Rango_Pista'Val (1 + T_Rango_Pista'Val (proxima_pista));
                proxima_pista := proxima_pista + 1;
             end Asignar_pista;
+
          or
             accept Permiso_Aterrizaje (pista : in T_Rango_pista) do
                requeue Pista_Aterrizaje (T_Rango_Pista'val (Pista))
                         .Acceder_A_Pista;
             end Permiso_Aterrizaje;
+
          or
             accept salir_Aterrizaje (Pista : in T_Rango_pista) do
                Pista_Aterrizaje (pista).Liberar_Pista;
             end Salir_Aterrizaje;
+
          end select;
 
          delay Duration (2);
@@ -72,6 +75,7 @@ package body PKG_Torre_Control is
       begin
          Ocupada := True;
       end Acceder_A_Pista;
+
       procedure Liberar_Pista is
       begin
          Ocupada := false;
